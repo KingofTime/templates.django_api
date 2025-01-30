@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+    api:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: development
+            args:
+                - UID=${UID}
+                - GID=${GID}
+        env_file:
+            - .env
+        container_name: template__django_api
+        depends_on:
+            database:
+                condition: service_healthy
+        command: "poetry run python manage.py runserver 0.0.0.0:8000"
+        stdin_open: true
+        tty: true
+        ports:
+            - ${APP_FORWARD_PORT}:8000
+        volumes:
+            - .:/home/template_user/app
+        networks:
+            - template__django_api
+    database:
+        image: postgres:16.4
+        container_name: template__django_database
+        restart: always
+        healthcheck:
+            test: [ "CMD-SHELL", "pg_isready" ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 15s
+        environment:
+            - POSTGRES_DB=${DB_NAME}
+            - POSTGRES_USER=${DB_USER}
+            - POSTGRES_PASSWORD=${DB_PASSWORD}
+        volumes:
+            - .docker/postgres/db_data:/var/lib/postgresql
+        ports:
+            - ${DB_FORWARD_PORT}:5432
+        networks:
+            - template__django_api
+    redis:
+        image: redis:7.4.2-alpine
+        restart: always
+        command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
+        volumes:
+            - .docker/redis/cache:/data
+        ports:
+            - ${REDIS_FORWARD_PORT}:6379
+        networks:
+            - template__django_api
+
+networks:
+    template__django_api:
+        driver: bridge
+
