@@ -14,7 +14,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DEFAULT_TIMEOUT=100 \
     POETRY_VERSION=2.0.1 \
     POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_VIRTUALENVS_IN_PROJECT=false \
     POETRY_NO_INTERACTION=1
 
 # Create app user
@@ -31,8 +31,11 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && chsh -s /usr/local/bin/bash template_user \
     && curl -sSL https://install.python-poetry.org | POETRY_VERSION=$POETRY_VERSION python3 -
-
 ENV PATH="$POETRY_HOME/bin:$PATH"
+RUN poetry config virtualenvs.create false
+
+COPY poetry.lock pyproject.toml README.md ./
+RUN poetry lock && poetry install --no-root
 
 USER template_user
 
